@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.theme.Figures
 import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.kweather.domain.ComfortMath
@@ -60,7 +62,7 @@ private fun Gauge(title: String, trailing: String, value: String, fraction: Floa
     val p = LocalPalette.current
     SceneCard {
         CardTitle(title, trailing)
-        Text(value, style = TextStyle(fontSize = 34.sp, color = p.onCard))
+        Text(value, style = Figures.copy(fontSize = 34.sp, fontWeight = FontWeight.SemiBold, color = p.onCard))
         Box(Modifier.fillMaxWidth().height(8.dp).background(p.cardHighlight, RoundedCornerShape(4.dp))) {
             Box(
                 Modifier

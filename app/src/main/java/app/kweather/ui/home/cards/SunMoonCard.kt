@@ -80,8 +80,8 @@ fun SunMoonCard(weather: Weather) {
                     var t = 0f
                     while (t <= progress) { val pt = at(t); lineTo(pt.x, pt.y); t += 0.02f }
                 }
-                drawPath(done, Color(0xFFF3BD4E), style = Stroke(width = 2.5.dp.toPx()))
-                drawCircle(Color(0xFFF3BD4E), 7.dp.toPx(), at(progress))
+                drawPath(done, p.sunInk, style = Stroke(width = 2.5.dp.toPx()))
+                drawCircle(p.sunInk, 7.dp.toPx(), at(progress))
             }
         }
         Row(Modifier.fillMaxWidth()) {
@@ -97,7 +97,11 @@ fun SunMoonCard(weather: Weather) {
                 )
                 val days = MoonMath.daysToFull(phase)
                 Text(
-                    if (days == 0) "Full moon tonight" else "Full moon in $days days",
+                    when (days) {
+                        0 -> "Full moon tonight"
+                        1 -> "Full moon tomorrow"
+                        else -> "Full moon in $days days"
+                    },
                     style = TextStyle(fontSize = 13.sp, color = p.onCardVariant),
                 )
             }

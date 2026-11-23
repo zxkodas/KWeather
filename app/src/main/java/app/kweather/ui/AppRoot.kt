@@ -196,7 +196,7 @@ fun AppRoot(
                 key = { state.pages[it].key },
                 modifier = Modifier.fillMaxSize(),
             ) { index ->
-                WeatherPage(state.pages[index], index, state.pages.size, pageActions)
+                WeatherPage(state.pages[index], index, state.pages.size, pageActions, active = index == pager.currentPage)
             }
         }
     }

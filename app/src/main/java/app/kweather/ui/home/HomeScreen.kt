@@ -1,5 +1,6 @@
 package app.kweather.ui.home
 
+import app.kweather.ui.theme.HeroNumberFamily
 import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -40,7 +41,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
+import app.kweather.ui.scene.SkyType
+import app.kweather.ui.scene.TimeOfDay
+import app.kweather.ui.scene.relativeLuminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -79,16 +87,17 @@ class PageActions(
 )
 
 @Composable
-fun WeatherPage(page: PageState, index: Int, count: Int, actions: PageActions) {
+/** [active] is false for the neighbours a pager composes off-screen, so only the visible page sets the status bar. */
+fun WeatherPage(page: PageState, index: Int, count: Int, actions: PageActions, active: Boolean = true) {
     val weather = page.weather
     if (weather == null) {
-        PageMessage(page, index, count, actions)
+        PageMessage(page, index, count, actions, active)
         return
     }
     val spec = remember(weather) { SceneSpec.from(weather) }
     val palette = remember(spec) { ScenePalette.forSpec(spec) }
     KWeatherTheme(palette) {
-        WeatherContent(page, weather, spec, palette, index, count, actions)
+        WeatherContent(page, weather, spec, palette, index, count, actions, active)
     }
 }
 
@@ -102,18 +111,21 @@ private fun WeatherContent(
     index: Int,
     count: Int,
     actions: PageActions,
+    active: Boolean,
 ) {
     val scroll = rememberScrollState()
     val density = LocalDensity.current
+    val heroHeight = heroHeight()
     val statusBarPx = WindowInsets.statusBars.getTop(density).toFloat()
-    val heroPx = with(density) { HERO_HEIGHT.toPx() }
+    val heroPx = with(density) { heroHeight.toPx() }
+    var textBottom by remember { mutableFloatStateOf(0f) }
     // 0 while the status bar is over the sky, 1 once cards scroll under it.
     val scrim by remember(statusBarPx, heroPx) {
         derivedStateOf {
             ((scroll.value - (heroPx - 2 * statusBarPx)) / statusBarPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
         }
     }
-    StatusBarIcons(dark = !palette.isDark && scrim > 0.5f)
+    if (active) StatusBarIcons(dark = if (scrim > 0.5f) !palette.isDark else palette.heroInkIsDark)
 
     PullToRefreshBox(
         isRefreshing = page.refreshing,
@@ -121,11 +133,16 @@ private fun WeatherContent(
         modifier = Modifier.fillMaxSize().background(palette.background),
     ) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-            Box(Modifier.fillMaxWidth().height(HERO_HEIGHT)) {
-                WeatherScene(spec, palette, Modifier.fillMaxSize())
-                Column(Modifier.statusBarsPadding()) {
-                    PageHeader(index, count, actions.onOpenPlaces, actions.onOpenSettings)
-                    Hero(page, weather, Modifier.padding(start = 24.dp, top = 8.dp))
+            Box(Modifier.fillMaxWidth().height(heroHeight)) {
+                WeatherScene(spec, palette, Modifier.fillMaxSize(), textBottom = textBottom)
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged { textBottom = it.height.toFloat() }
+                        .statusBarsPadding(),
+                ) {
+                    PageHeader(index, count, actions.onOpenPlaces, actions.onOpenSettings, palette.heroInk)
+                    Hero(page, weather, palette.heroInk, Modifier.padding(start = 24.dp, top = 8.dp, bottom = 12.dp))
                 }
             }
             Column(
@@ -171,21 +188,35 @@ fun StatusBarIcons(dark: Boolean) {
     }
 }
 
+/** About 60% of the window height, so short phones and landscape still show the first card. */
+@Composable
+private fun heroHeight(): Dp {
+    val windowHeight = LocalWindowInfo.current.containerSize.height
+    return with(LocalDensity.current) { (windowHeight * 0.6f).toDp() }.coerceIn(340.dp, 520.dp)
+}
+
 /** Places button on the left, one dot per page in the middle, settings on the right. */
 @Composable
-private fun PageHeader(index: Int, count: Int, onOpenPlaces: () -> Unit, onOpenSettings: () -> Unit) {
+private fun PageHeader(
+    index: Int,
+    count: Int,
+    onOpenPlaces: () -> Unit,
+    onOpenSettings: () -> Unit,
+    ink: Color = Color.White,
+) {
+    val container = if (relativeLuminance(ink) < 0.2) Color(0x33FFFFFF) else Color(0x33000000)
     Box(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 12.dp)) {
         IconButton(
             onClick = onOpenPlaces,
             modifier = Modifier.align(Alignment.CenterStart),
-            colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0x33000000), contentColor = Color.White),
+            colors = IconButtonDefaults.iconButtonColors(containerColor = container, contentColor = ink),
         ) {
             Icon(painterResource(R.drawable.ic_places), contentDescription = "Places")
         }
         IconButton(
             onClick = onOpenSettings,
             modifier = Modifier.align(Alignment.CenterEnd),
-            colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0x33000000), contentColor = Color.White),
+            colors = IconButtonDefaults.iconButtonColors(containerColor = container, contentColor = ink),
         ) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
         }
@@ -196,7 +227,7 @@ private fun PageHeader(index: Int, count: Int, onOpenPlaces: () -> Unit, onOpenS
                         Modifier
                             .height(6.dp)
                             .width(if (i == index) 18.dp else 6.dp)
-                            .background(if (i == index) Color.White else Color(0x80FFFFFF), CircleShape),
+                            .background(if (i == index) ink else ink.copy(alpha = 0.5f), CircleShape),
                     )
                 }
             }
@@ -204,12 +235,8 @@ private fun PageHeader(index: Int, count: Int, onOpenPlaces: () -> Unit, onOpenS
     }
 }
 
-private val HERO_HEIGHT = 480.dp
-
-private val heroShadow = Shadow(color = Color(0x40000000), blurRadius = 12f)
-
 @Composable
-private fun Hero(page: PageState, weather: Weather, modifier: Modifier = Modifier) {
+private fun Hero(page: PageState, weather: Weather, ink: Color, modifier: Modifier = Modifier) {
     val c = weather.current
     val today = weather.today
     val f = LocalFmt.current
@@ -220,25 +247,24 @@ private fun Hero(page: PageState, weather: Weather, modifier: Modifier = Modifie
                 Icon(
                     painterResource(R.drawable.ic_location),
                     contentDescription = "Current location",
-                    tint = Color.White,
+                    tint = ink,
                     modifier = Modifier.size(18.dp),
                 )
             }
-            Text(name, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Color.White, shadow = heroShadow))
+            Text(name, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Medium, color = ink))
         }
         Text(
             f.temp(c.temperature),
-            style = TextStyle(fontSize = 104.sp, fontWeight = FontWeight.Light, color = Color.White,
-                letterSpacing = (-4).sp, shadow = heroShadow),
+            style = TextStyle(fontSize = 104.sp, fontFamily = HeroNumberFamily, color = ink, letterSpacing = (-3).sp),
         )
         Text(
             "${c.condition.labelFor(c.isDay)} · feels ${f.temp(c.feelsLike)}",
-            style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color.White, shadow = heroShadow),
+            style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Medium, color = ink),
         )
         if (today != null) {
             Text(
                 "H ${f.temp(today.max)}  L ${f.temp(today.min)}",
-                style = TextStyle(fontSize = 15.sp, color = Color(0xFFE6EEF7), shadow = heroShadow),
+                style = TextStyle(fontSize = 15.sp, color = ink),
             )
         }
     }
@@ -259,10 +285,13 @@ private fun Banner(message: String) {
 
 /** Loading, error and location-problem states for a page that has no forecast yet. */
 @Composable
-private fun PageMessage(page: PageState, index: Int, count: Int, actions: PageActions) {
+private fun PageMessage(page: PageState, index: Int, count: Int, actions: PageActions, active: Boolean) {
     val palette = ScenePalette.default
-    StatusBarIcons(dark = false)
-    Box(Modifier.fillMaxSize().background(palette.skyTop)) {
+    if (active) StatusBarIcons(dark = false)
+    Box(Modifier.fillMaxSize().background(palette.background)) {
+        // A still clear sky, darkened so the white text and buttons read anywhere on it.
+        WeatherScene(MESSAGE_SCENE, palette, Modifier.fillMaxSize(), motion = false)
+        Box(Modifier.fillMaxSize().background(Color(0x8C0A1A33)))
         Column(Modifier.statusBarsPadding()) { PageHeader(index, count, actions.onOpenPlaces, actions.onOpenSettings) }
         Column(
             Modifier.align(Alignment.Center).padding(32.dp),
@@ -296,6 +325,8 @@ private fun PageMessage(page: PageState, index: Int, count: Int, actions: PageAc
         }
     }
 }
+
+private val MESSAGE_SCENE = SceneSpec(SkyType.Clear, TimeOfDay.Day, 0.0, 0.0, 0.0, 0.0, heavy = false)
 
 @Composable
 private fun Message(text: String) {

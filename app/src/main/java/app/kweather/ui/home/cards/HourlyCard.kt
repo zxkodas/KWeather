@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.theme.Figures
 import app.kweather.ui.settings.Fmt
 import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.Canvas
@@ -62,9 +63,9 @@ fun HourlyCard(weather: Weather) {
             }
             drawPath(line, p.onCard, style = Stroke(width = 2.dp.toPx(), join = StrokeJoin.Round))
 
-            val labelStyle = TextStyle(fontSize = 13.sp, color = p.onCard, fontWeight = FontWeight.Medium)
-            val smallStyle = TextStyle(fontSize = 11.sp, color = p.onCardVariant)
-            val rainStyle = TextStyle(fontSize = 11.sp, color = p.rain)
+            val labelStyle = Figures.copy(fontSize = 14.sp, color = p.onCard, fontWeight = FontWeight.SemiBold)
+            val smallStyle = Figures.copy(fontSize = 11.sp, color = p.onCardVariant)
+            val rainStyle = Figures.copy(fontSize = 11.sp, color = p.rain, fontWeight = FontWeight.Medium)
             val barBottom = 132.dp.toPx()
             val barMax = 34.dp.toPx()
 

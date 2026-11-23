@@ -100,6 +100,6 @@ fun DemoGalleryScreen(cities: List<DemoCity>, onOpen: (Int) -> Unit, onBack: () 
 fun DemoPager(cities: List<DemoCity>, start: Int, actions: PageActions) {
     val pager = rememberPagerState(initialPage = start.coerceIn(0, (cities.size - 1).coerceAtLeast(0))) { cities.size }
     HorizontalPager(state = pager, key = { cities[it].page.key }, modifier = Modifier.fillMaxSize()) { index ->
-        WeatherPage(cities[index].page, index, cities.size, actions)
+        WeatherPage(cities[index].page, index, cities.size, actions, active = index == pager.currentPage)
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -35,12 +36,13 @@ val CardShape = RoundedCornerShape(28.dp)
 fun SceneCard(
     modifier: Modifier = Modifier,
     color: Color = LocalPalette.current.card,
+    brush: Brush? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(color, CardShape)
+            .then(if (brush != null) Modifier.background(brush, CardShape) else Modifier.background(color, CardShape))
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
@@ -71,9 +73,9 @@ fun ConditionIcon(condition: Condition, isDay: Boolean, size: Dp = 24.dp) {
         val u = this.size.width / 24f
         when {
             condition == Condition.Clear || condition == Condition.MostlyClear ->
-                if (isDay) sun(Offset(12f * u, 12f * u), u) else moon(Offset(12f * u, 12f * u), u, ink)
+                if (isDay) sun(Offset(12f * u, 12f * u), u, p.sunInk) else moon(Offset(12f * u, 12f * u), u, ink)
             condition == Condition.PartlyCloudy -> {
-                if (isDay) sun(Offset(8.5f * u, 8.5f * u), u * 0.8f) else moon(Offset(8.5f * u, 8.5f * u), u * 0.8f, ink)
+                if (isDay) sun(Offset(8.5f * u, 8.5f * u), u * 0.8f, p.sunInk) else moon(Offset(8.5f * u, 8.5f * u), u * 0.8f, ink)
                 cloud(Offset(13.5f * u, 15.5f * u), u * 0.9f, ink, p.card)
             }
             condition == Condition.Fog -> repeat(3) { i ->
@@ -86,7 +88,7 @@ fun ConditionIcon(condition: Condition, isDay: Boolean, size: Dp = 24.dp) {
                     moveTo(13f * u, 14f * u); lineTo(10f * u, 19f * u); lineTo(12.5f * u, 19f * u)
                     lineTo(11f * u, 23f * u); lineTo(15.5f * u, 17.5f * u); lineTo(13f * u, 17.5f * u); close()
                 }
-                drawPath(bolt, Color(0xFFF3BD4E))
+                drawPath(bolt, p.sunInk)
             }
             condition.isSnowy -> {
                 cloud(Offset(12f * u, 10f * u), u, ink, p.card)
@@ -104,8 +106,7 @@ fun ConditionIcon(condition: Condition, isDay: Boolean, size: Dp = 24.dp) {
     }
 }
 
-private fun DrawScope.sun(c: Offset, u: Float) {
-    val color = Color(0xFFF3BD4E)
+private fun DrawScope.sun(c: Offset, u: Float, color: Color) {
     drawCircle(color, 4.5f * u, c)
     repeat(8) { i ->
         val a = i * PI / 4

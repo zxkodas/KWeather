@@ -26,6 +26,8 @@ data class SceneSpec(
     val heavy: Boolean,
     /** The lit side of a waxing moon is on the left in the southern hemisphere. */
     val southern: Boolean = false,
+    /** km/h; how far gusts exceed the mean wind sets how hard the grass sways. */
+    val windGusts: Double = 0.0,
 ) {
     companion object {
         fun from(weather: Weather): SceneSpec {
@@ -49,6 +51,7 @@ data class SceneSpec(
                 moonPhase = MoonMath.phase(c.time.toInstant(ZoneOffset.UTC)),
                 heavy = c.condition in setOf(Condition.HeavyRain, Condition.HeavySnow, Condition.Hail),
                 southern = weather.place.latitude < 0,
+                windGusts = c.wind.gusts,
             )
         }
 

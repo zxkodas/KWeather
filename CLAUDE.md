@@ -29,7 +29,7 @@ No DI framework: `KWeatherApp` (the `Application`) wires one Ktor/OkHttp client 
 
 **Navigation** lives entirely in `ui/AppRoot.kt`: a saved string back stack (`home/places/settings/demoList/demo`) plus an open-alert overlay (`"pageKey|alertId"`), no navigation library. `PageActions` keeps `WeatherPage` free of navigation/permission code; the demo gallery reuses `WeatherPage` with its own actions.
 
-**Scenes and theming.** `SceneSpec.from(weather)` maps the WMO condition + time of day (dawn/day/dusk/night from sunrise/sunset; daylight 0 = polar night, ~24 h = midnight sun) + wind/precip/moon phase. `ScenePalette.forSpec` derives every screen color from the scene; `KWeatherTheme` exposes it as `LocalPalette`. `WeatherScene` draws everything in one Compose `Canvas` from shared layers on a 390-unit stage; particle slant/drift/cloud speed follow real wind. Time is read only inside the draw lambda (redraw, not recomposition). Motion is off if the app setting or Android's animator scale says so.
+**Scenes and theming.** `SceneSpec.from(weather)` maps the WMO condition + time of day (dawn/day/dusk/night from sunrise/sunset; daylight 0 = polar night, ~24 h = midnight sun) + wind/precip/moon phase. `ScenePalette.forSpec` derives every screen color from the scene; `KWeatherTheme` exposes it as `LocalPalette`. `WeatherScene` draws everything in one Compose `Canvas` from shared layers on a 390-unit stage; particle slant/drift/cloud speed follow real wind. Time is read only inside the draw lambda (redraw, not recomposition). Motion is off if the app setting or Android's animator scale says so. Hero text color and the veil behind it (`heroInk`/`heroScrim`) are computed per palette; `ContrastTest` checks hero, card and wind-panel colors for every `SkyType` × `TimeOfDay`, so run it after any palette change.
 
 **Units.** API data is always metric. All display formatting goes through `ui/settings/Fmt` (from `AppSettings`, provided as `LocalFmt` at the root): temperatures, temperature deltas, wind, pressure, rain, distance, and 12/24 h times. Don't format units or times directly in cards.
 
@@ -41,6 +41,8 @@ No DI framework: `KWeatherApp` (the `Application`) wires one Ktor/OkHttp client 
 
 - One fixed home layout for every condition and place, in this order: alerts, scene/hero, 24 h chart, wind panel, six detail tiles, the single conditional comfort card (wind chill or heat index), sun and moon, 10-day forecast. Only the scene and palette change with the weather; don't add or reorder cards per condition.
 - Scene art is original and drawn in code; no bitmaps.
+- Anything that moves in the scene follows the weather (wind, gusts, precipitation); see `DESIGN.md` for direction and dials.
+- Figures (temperatures, wind, tile values, chart labels) use `Figures`/`NumberFamily` from `ui/theme/Type.kt`; words stay in the system font.
 - The demo gallery (`ui/demo/DemoData.kt`) is the way to preview designs; keep it covering every `SkyType`, `TimeOfDay` and alert level (`UnitsTest` checks the first two).
 - UI text is English; SMN alert text is shown as issued (Spanish) with CC BY 4.0 attribution.
 

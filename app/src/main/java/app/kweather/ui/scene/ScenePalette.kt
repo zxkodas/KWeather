@@ -13,8 +13,10 @@ data class ScenePalette(
     val cloud: Color,
     val cloudShade: Color,
     val precipitation: Color,
-    val hillFar: Color,
-    val hillMid: Color,
+    /** Distant ground at the horizon. */
+    val groundFar: Color,
+    /** Near ground and the grass blades on it. */
+    val grass: Color,
     val background: Color,
     val card: Color,
     val cardHighlight: Color,
@@ -23,8 +25,21 @@ data class ScenePalette(
     val accent: Color,
     val gust: Color,
     val rain: Color,
+    /** Sun glyphs and the sun arc on cards; deeper amber on light cards so it stays visible. */
+    val sunInk: Color,
+    /** Text and icons over the sky in the hero. */
+    val heroInk: Color,
+    /** Veil painted behind the hero text (alpha included) so [heroInk] reads over any part of the sky. */
+    val heroScrim: Color,
+    /** The wind panel's own background, a darker slice of the sky, top and bottom. */
+    val windCard: Color,
+    val windCardEnd: Color,
+    val onWind: Color,
+    val onWindVariant: Color,
     val isDark: Boolean,
 ) {
+    val heroInkIsDark: Boolean get() = relativeLuminance(heroInk) < 0.2
+
     companion object {
         /** Clear-day palette for screens that have no forecast to take colors from. */
         val default: ScenePalette by lazy {
@@ -58,11 +73,12 @@ data class ScenePalette(
                 card = lerp(background, Color.White, 0.07f)
                 highlight = lerp(background, Color.White, 0.14f)
                 onCard = Color(0xFFE8ECF2)
-                onVariant = Color(0xFFAEB7C4)
+                onVariant = Color(0xFFBFC7D2)
             } else {
-                background = lerp(bottom, Color.White, 0.86f)
-                card = lerp(bottom, Color.White, 0.66f)
-                highlight = Color.White
+                // Keep the scene's hue in the content instead of washing it out to near-white.
+                background = lerp(bottom, Color.White, 0.72f)
+                card = lerp(bottom, Color.White, 0.52f)
+                highlight = lerp(bottom, Color.White, 0.85f)
                 onCard = lerp(top, Color.Black, 0.75f)
                 onVariant = lerp(top, Color.Black, 0.5f)
             }
@@ -73,15 +89,17 @@ data class ScenePalette(
                 SkyType.PartlyCloudy -> 0.2f
                 else -> 0.6f
             }
-            val hillFar = when {
+            val dim = cloudiness * 0.6f + if (spec.time == TimeOfDay.Day) 0f else 0.35f
+            val groundFar = when {
                 spec.sky == SkyType.Snow -> lerp(bottom, Color.White, 0.55f)
-                greenery -> lerp(Color(0xFF7DB894), bottom, cloudiness * 0.6f + if (spec.time == TimeOfDay.Day) 0f else 0.35f)
+                greenery -> lerp(Color(0xFF8FB58A), bottom, dim)
                 else -> lerp(bottom, background, 0.45f)
             }
-            val hillMid = when {
-                spec.sky == SkyType.Snow -> lerp(hillFar, background, 0.5f)
-                greenery -> lerp(Color(0xFF5EA277), bottom, cloudiness * 0.6f + if (spec.time == TimeOfDay.Day) 0f else 0.35f)
-                else -> lerp(background, bottom, 0.18f)
+            val grass = when {
+                spec.sky == SkyType.Snow -> lerp(top, Color.Black, 0.35f)
+                greenery -> lerp(Color(0xFF557F3E), bottom, dim)
+                isDark -> lerp(top, Color.Black, 0.55f)
+                else -> lerp(bottom, top, 0.7f)
             }
 
             val cloud = when {
@@ -98,24 +116,94 @@ data class ScenePalette(
                 else -> lerp(top, Color.Black, 0.3f)
             }
 
+            val cloudShade = lerp(cloud, top, 0.25f)
+            val (heroInk, heroScrim) = heroInk(spec, top, bottom, cloud, cloudShade)
+            val (windCard, windCardEnd) = windCard(top, bottom)
+
             return ScenePalette(
                 skyTop = top,
                 skyBottom = bottom,
                 cloud = cloud,
-                cloudShade = lerp(cloud, top, 0.25f),
+                cloudShade = cloudShade,
                 precipitation = if (spec.sky == SkyType.Snow) Color.White else lerp(bottom, Color.White, 0.55f),
-                hillFar = hillFar,
-                hillMid = hillMid,
+                groundFar = groundFar,
+                grass = grass,
                 background = background,
                 card = card,
                 cardHighlight = highlight,
                 onCard = onCard,
                 onCardVariant = onVariant,
                 accent = accent,
-                gust = if (isDark) Color(0xFFF3BD4E) else Color(0xFFB0640A),
-                rain = if (isDark) Color(0xFF8EC1FF) else Color(0xFF2F64A8),
+                gust = if (isDark) SUN else Color(0xFF7A3F00),
+                rain = if (isDark) Color(0xFF8EC1FF) else Color(0xFF234F8C),
+                sunInk = if (isDark) SUN else Color(0xFF946000),
+                heroInk = heroInk,
+                heroScrim = heroScrim,
+                windCard = windCard,
+                windCardEnd = windCardEnd,
+                onWind = Color.White,
+                onWindVariant = lerp(windCard, Color.White, 0.8f),
                 isDark = isDark,
             )
+        }
+
+        /** Where the sky gradient's middle stop sits; above it the sky is a plain top-to-bottom blend. */
+        const val SKY_MID = 0.85f
+
+        /** Sky color at a fraction of the hero height: top to bottom, then a lighter band at the horizon. */
+        fun skyAt(top: Color, bottom: Color, f: Float): Color =
+            if (f <= SKY_MID) lerp(top, bottom, f) else lerp(lerp(top, bottom, SKY_MID), horizon(bottom), (f - SKY_MID) / (1 - SKY_MID))
+
+        fun horizon(bottom: Color): Color = lerp(bottom, Color.White, 0.18f)
+
+        /** The sun yellow used across the scene and on dark cards. */
+        val SUN = Color(0xFFF3BD4E)
+
+        /** Hero text can reach this far down the hero at its smallest height. */
+        private const val HERO_TEXT_REACH = 0.85f
+
+        /** Everything the hero text can land on: the sky down to the text's reach, plus cloud decks and fog. */
+        fun heroBackdrops(spec: SceneSpec, top: Color, bottom: Color, cloud: Color, cloudShade: Color): List<Color> {
+            val sky = (0..10).map { skyAt(top, bottom, it / 10f * HERO_TEXT_REACH) }
+            return when (spec.sky) {
+                SkyType.Overcast, SkyType.Drizzle, SkyType.Rain, SkyType.Storm, SkyType.Snow -> sky + cloud + cloudShade
+                SkyType.Fog -> sky + sky.map { lerp(it, lerp(bottom, Color.White, 0.5f), 0.5f) }
+                else -> sky
+            }
+        }
+
+        /**
+         * White text over a veil tinted from the sky top, or dark text over a light veil, whichever needs
+         * the lighter veil (white wins ties up to a 45% veil). Every backdrop reaches 4.6:1.
+         */
+        private fun heroInk(spec: SceneSpec, top: Color, bottom: Color, cloud: Color, cloudShade: Color): Pair<Color, Color> {
+            val backdrops = heroBackdrops(spec, top, bottom, cloud, cloudShade)
+            fun veil(ink: Color, tint: Color): Float? = (0..40).map { it * 0.02f }.firstOrNull { a ->
+                backdrops.all { contrast(ink, composite(it, tint.copy(alpha = a))) >= 4.6 }
+            }
+            val darkTint = lerp(top, Color.Black, 0.6f)
+            val lightTint = lerp(bottom, Color.White, 0.6f)
+            val darkInk = lerp(top, Color.Black, 0.82f)
+            val white = veil(Color.White, darkTint)
+            val dark = veil(darkInk, lightTint)
+            return if (white != null && (white <= 0.45f || dark == null || white <= dark)) {
+                Color.White to darkTint.copy(alpha = white)
+            } else {
+                darkInk to lightTint.copy(alpha = dark ?: 0.8f)
+            }
+        }
+
+        /** A mid slice of the sky, darkened until white text and the gust yellow read on both ends. */
+        private fun windCard(top: Color, bottom: Color): Pair<Color, Color> {
+            var start = lerp(top, bottom, 0.45f)
+            var end = lerp(start, bottom, 0.2f)
+            repeat(20) {
+                val ok = listOf(start, end).all { contrast(Color.White, it) >= 6.0 && contrast(SUN, it) >= 4.5 }
+                if (ok) return start to end
+                start = lerp(start, Color.Black, 0.08f)
+                end = lerp(end, Color.Black, 0.08f)
+            }
+            return start to end
         }
 
         private fun mix(a: Pair<Color, Color>, b: Pair<Color, Color>, t: Float) =

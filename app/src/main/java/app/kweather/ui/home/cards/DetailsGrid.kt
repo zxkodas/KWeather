@@ -3,7 +3,12 @@ package app.kweather.ui.home.cards
 import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -14,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import app.kweather.domain.ComfortMath
 import app.kweather.domain.Weather
 import app.kweather.ui.scene.LocalPalette
+import app.kweather.ui.theme.Figures
 import app.kweather.ui.whole
 import java.util.Locale
 
@@ -46,10 +52,16 @@ fun DetailsGrid(weather: Weather) {
         Tile("Rain next 24 h", f.precip(rainNext24), "${f.precip(c.precipitation)} right now"),
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        tiles.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { TileView(it, Modifier.weight(1f)) }
+    // One panel with dividers rather than six separate boxes: these are supporting figures.
+    val p = LocalPalette.current
+    val line = p.onCardVariant.copy(alpha = 0.2f)
+    SceneCard {
+        tiles.chunked(2).forEachIndexed { i, row ->
+            if (i > 0) HorizontalDivider(color = line)
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                TileView(row[0], Modifier.weight(1f))
+                VerticalDivider(color = line)
+                TileView(row[1], Modifier.weight(1f))
             }
         }
     }
@@ -60,11 +72,9 @@ private data class Tile(val label: String, val value: String, val caption: Strin
 @Composable
 private fun TileView(tile: Tile, modifier: Modifier) {
     val p = LocalPalette.current
-    SceneCard(modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(tile.label, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = p.onCardVariant))
-            Text(tile.value, style = TextStyle(fontSize = 30.sp, color = p.onCard))
-            Text(tile.caption, style = TextStyle(fontSize = 13.sp, color = p.onCardVariant))
-        }
+    Column(modifier.padding(vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(tile.label, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = p.onCardVariant))
+        Text(tile.value, style = Figures.copy(fontSize = 28.sp, fontWeight = FontWeight.Medium, color = p.onCard))
+        Text(tile.caption, style = TextStyle(fontSize = 13.sp, color = p.onCardVariant))
     }
 }

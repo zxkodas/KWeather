@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.theme.Figures
 import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -61,18 +62,18 @@ private fun DayRow(day: Day, label: String, lowest: Double, highest: Double) {
         ConditionIcon(day.condition, isDay = true, size = 22.dp)
         Text(
             if (day.precipitationProbability >= 10) "${day.precipitationProbability}%" else "",
-            style = TextStyle(fontSize = 12.sp, color = p.rain),
+            style = Figures.copy(fontSize = 12.sp, color = p.rain),
             modifier = Modifier.width(34.dp),
         )
         Text(
             f.windValue(day.gustMax),
-            style = TextStyle(fontSize = 12.sp, color = if (day.gustMax >= 50) p.gust else p.onCardVariant),
+            style = Figures.copy(fontSize = 12.sp, color = if (day.gustMax >= 50) p.gust else p.onCardVariant),
             modifier = Modifier.width(24.dp),
             textAlign = TextAlign.End,
         )
-        Text(f.temp(day.min), style = TextStyle(fontSize = 14.sp, color = p.onCardVariant), modifier = Modifier.width(32.dp), textAlign = TextAlign.End)
+        Text(f.temp(day.min), style = Figures.copy(fontSize = 15.sp, color = p.onCardVariant), modifier = Modifier.width(32.dp), textAlign = TextAlign.End)
         RangeBar(day, lowest, highest, Modifier.weight(1f).height(6.dp))
-        Text(f.temp(day.max), style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = p.onCard), modifier = Modifier.width(32.dp))
+        Text(f.temp(day.max), style = Figures.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = p.onCard), modifier = Modifier.width(32.dp))
     }
 }
 
