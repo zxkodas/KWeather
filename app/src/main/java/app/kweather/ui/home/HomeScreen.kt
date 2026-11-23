@@ -134,7 +134,8 @@ private fun WeatherContent(
     ) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             Box(Modifier.fillMaxWidth().height(heroHeight)) {
-                WeatherScene(spec, palette, Modifier.fillMaxSize(), textBottom = textBottom)
+                // Only the current page animates, so a swipe never has two scenes moving at once.
+                WeatherScene(spec, palette, Modifier.fillMaxSize(), textBottom = textBottom, motion = active)
                 Column(
                     Modifier
                         .fillMaxWidth()

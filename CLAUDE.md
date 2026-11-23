@@ -14,10 +14,11 @@ Needs JDK 17+ (`jvmToolchain(17)`) and the Android SDK with compile SDK 37.2. If
 ./gradlew testDebugUnitTest                  # all JVM unit tests
 ./gradlew testDebugUnitTest --tests 'app.kweather.AlertsTest'                 # one class
 ./gradlew testDebugUnitTest --tests 'app.kweather.UnitsTest.temperatures'     # one test
+SCENE_SET=after ./gradlew testDebugUnitTest --tests 'app.kweather.SceneSnapshotTest'   # scene PNGs -> app/build/scene-snapshots/after/
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-There is no lint/format task configured and no emulator setup; the app is checked on a real phone over adb. Unit tests are plain JVM (JUnit 4, Ktor `MockEngine`, `kotlinx-coroutines-test`); there are no instrumented tests. SMN CAP fixtures live in `app/src/test/resources/smn/`.
+There is no lint/format task configured and no emulator setup; the app is checked on a real phone over adb. Unit tests are plain JVM (JUnit 4, Ktor `MockEngine`, `kotlinx-coroutines-test`); there are no instrumented tests. `SceneSnapshotTest` uses Robolectric native graphics to render the hero scene to PNGs for design review (no assertions); use it to look at scene changes without a phone. SMN CAP fixtures live in `app/src/test/resources/smn/`.
 
 Versions are pinned in `gradle/libs.versions.toml`. AGP 9 provides built-in Kotlin, so there is no `org.jetbrains.kotlin.android` plugin; only the Compose and serialization compiler plugins are applied.
 
@@ -29,7 +30,7 @@ No DI framework: `KWeatherApp` (the `Application`) wires one Ktor/OkHttp client 
 
 **Navigation** lives entirely in `ui/AppRoot.kt`: a saved string back stack (`home/places/settings/demoList/demo`) plus an open-alert overlay (`"pageKey|alertId"`), no navigation library. `PageActions` keeps `WeatherPage` free of navigation/permission code; the demo gallery reuses `WeatherPage` with its own actions.
 
-**Scenes and theming.** `SceneSpec.from(weather)` maps the WMO condition + time of day (dawn/day/dusk/night from sunrise/sunset; daylight 0 = polar night, ~24 h = midnight sun) + wind/precip/moon phase. `ScenePalette.forSpec` derives every screen color from the scene; `KWeatherTheme` exposes it as `LocalPalette`. `WeatherScene` draws everything in one Compose `Canvas` from shared layers on a 390-unit stage; particle slant/drift/cloud speed follow real wind. Time is read only inside the draw lambda (redraw, not recomposition). Motion is off if the app setting or Android's animator scale says so. Hero text color and the veil behind it (`heroInk`/`heroScrim`) are computed per palette; `ContrastTest` checks hero, card and wind-panel colors for every `SkyType` × `TimeOfDay`, so run it after any palette change.
+**Scenes and theming.** `SceneSpec.from(weather)` maps the WMO condition + time of day (dawn/day/dusk/night from sunrise/sunset; daylight 0 = polar night, ~24 h = midnight sun) + wind/precip/moon phase. `ScenePalette.forSpec` derives every screen color from the scene; `KWeatherTheme` exposes it as `LocalPalette`. `WeatherScene` draws on a 390-unit stage through `drawWithCache`: `Stage` (built once per size/spec) holds the layers `SkyLayer`, `CloudLayer`, `GroundLayer` and `WeatherLayer` (`ui/scene/Scene*.kt`), with paths, brushes and soft half-resolution sprites (clouds, deck bands, fog banks, rain shafts) prebuilt; each frame only positions them. Particle slant/drift/cloud speed follow real wind; cloud count follows `cloudCover`, horizon haze follows `visibility`. Time is read only inside `onDrawBehind` (redraw, not recomposition). Stages are built on `Dispatchers.Default`; only the current pager page animates (`motion = active`); particles and grass are drawn in batched calls (`drawRawPoints`, one combined path per shade), never one call per item, since per-item calls on two visible pages made swipes jank. Motion is off if the app setting or Android's animator scale says so. Hero text color and the veil behind it (`heroInk`/`heroScrim`) are computed per palette; `ContrastTest` checks hero, card and wind-panel colors for every `SkyType` × `TimeOfDay`, so run it after any palette change.
 
 **Units.** API data is always metric. All display formatting goes through `ui/settings/Fmt` (from `AppSettings`, provided as `LocalFmt` at the root): temperatures, temperature deltas, wind, pressure, rain, distance, and 12/24 h times. Don't format units or times directly in cards.
 
@@ -40,7 +41,7 @@ No DI framework: `KWeatherApp` (the `Application`) wires one Ktor/OkHttp client 
 ## Design rules
 
 - One fixed home layout for every condition and place, in this order: alerts, scene/hero, 24 h chart, wind panel, six detail tiles, the single conditional comfort card (wind chill or heat index), sun and moon, 10-day forecast. Only the scene and palette change with the weather; don't add or reorder cards per condition.
-- Scene art is original and drawn in code; no bitmaps.
+- Scene art is original and drawn in code; no bitmap assets (runtime caches of code-drawn shapes are fine).
 - Anything that moves in the scene follows the weather (wind, gusts, precipitation); see `DESIGN.md` for direction and dials.
 - Figures (temperatures, wind, tile values, chart labels) use `Figures`/`NumberFamily` from `ui/theme/Type.kt`; words stay in the system font.
 - The demo gallery (`ui/demo/DemoData.kt`) is the way to preview designs; keep it covering every `SkyType`, `TimeOfDay` and alert level (`UnitsTest` checks the first two).

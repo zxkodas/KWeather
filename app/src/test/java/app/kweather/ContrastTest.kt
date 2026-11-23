@@ -34,7 +34,7 @@ class ContrastTest {
         for ((sky, time) in scenes) {
             val spec = SceneSpec(sky, time, 10.0, 90.0, 0.0, 0.25, heavy = false)
             val p = ScenePalette.forSpec(spec)
-            ScenePalette.heroBackdrops(spec, p.skyTop, p.skyBottom, p.cloud, p.cloudShade).forEach { backdrop ->
+            ScenePalette.heroBackdrops(spec, p.skyTop, p.skyBottom, p.cloud, p.cloudShade, p.cloudBelly).forEach { backdrop ->
                 check(failures, "$sky/$time", "hero", p.heroInk, composite(backdrop, p.heroScrim), 4.5)
             }
         }

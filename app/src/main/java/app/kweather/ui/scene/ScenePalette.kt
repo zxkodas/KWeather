@@ -12,6 +12,8 @@ data class ScenePalette(
     val skyBottom: Color,
     val cloud: Color,
     val cloudShade: Color,
+    /** The darkest part of a cloud: the underside of a puff and the top of a covered sky. */
+    val cloudBelly: Color,
     val precipitation: Color,
     /** Distant ground at the horizon. */
     val groundFar: Color,
@@ -117,7 +119,8 @@ data class ScenePalette(
             }
 
             val cloudShade = lerp(cloud, top, 0.25f)
-            val (heroInk, heroScrim) = heroInk(spec, top, bottom, cloud, cloudShade)
+            val cloudBelly = lerp(cloudShade, top, 0.3f)
+            val (heroInk, heroScrim) = heroInk(spec, top, bottom, cloud, cloudShade, cloudBelly)
             val (windCard, windCardEnd) = windCard(top, bottom)
 
             return ScenePalette(
@@ -125,6 +128,7 @@ data class ScenePalette(
                 skyBottom = bottom,
                 cloud = cloud,
                 cloudShade = cloudShade,
+                cloudBelly = cloudBelly,
                 precipitation = if (spec.sky == SkyType.Snow) Color.White else lerp(bottom, Color.White, 0.55f),
                 groundFar = groundFar,
                 grass = grass,
@@ -163,10 +167,18 @@ data class ScenePalette(
         private const val HERO_TEXT_REACH = 0.85f
 
         /** Everything the hero text can land on: the sky down to the text's reach, plus cloud decks and fog. */
-        fun heroBackdrops(spec: SceneSpec, top: Color, bottom: Color, cloud: Color, cloudShade: Color): List<Color> {
+        fun heroBackdrops(
+            spec: SceneSpec,
+            top: Color,
+            bottom: Color,
+            cloud: Color,
+            cloudShade: Color,
+            cloudBelly: Color,
+        ): List<Color> {
             val sky = (0..10).map { skyAt(top, bottom, it / 10f * HERO_TEXT_REACH) }
             return when (spec.sky) {
-                SkyType.Overcast, SkyType.Drizzle, SkyType.Rain, SkyType.Storm, SkyType.Snow -> sky + cloud + cloudShade
+                SkyType.Overcast, SkyType.Drizzle, SkyType.Rain, SkyType.Storm, SkyType.Snow ->
+                    sky + cloud + cloudShade + cloudBelly + lerp(cloud, horizon(bottom), 0.4f)
                 SkyType.Fog -> sky + sky.map { lerp(it, lerp(bottom, Color.White, 0.5f), 0.5f) }
                 else -> sky
             }
@@ -176,8 +188,15 @@ data class ScenePalette(
          * White text over a veil tinted from the sky top, or dark text over a light veil, whichever needs
          * the lighter veil (white wins ties up to a 45% veil). Every backdrop reaches 4.6:1.
          */
-        private fun heroInk(spec: SceneSpec, top: Color, bottom: Color, cloud: Color, cloudShade: Color): Pair<Color, Color> {
-            val backdrops = heroBackdrops(spec, top, bottom, cloud, cloudShade)
+        private fun heroInk(
+            spec: SceneSpec,
+            top: Color,
+            bottom: Color,
+            cloud: Color,
+            cloudShade: Color,
+            cloudBelly: Color,
+        ): Pair<Color, Color> {
+            val backdrops = heroBackdrops(spec, top, bottom, cloud, cloudShade, cloudBelly)
             fun veil(ink: Color, tint: Color): Float? = (0..40).map { it * 0.02f }.firstOrNull { a ->
                 backdrops.all { contrast(ink, composite(it, tint.copy(alpha = a))) >= 4.6 }
             }

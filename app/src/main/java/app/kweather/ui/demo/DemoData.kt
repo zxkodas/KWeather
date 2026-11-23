@@ -50,6 +50,8 @@ object DemoData {
         val rainChance: Int = 0,
         val pressure: Double = 1013.0,
         val visibility: Double = 24_000.0,
+        /** Percent; null = typical for the condition. Partly cloudy skies draw more clouds as it rises. */
+        val cloudCover: Double? = null,
         val uv: Double = 0.0,
         val sunrise: LocalTime? = LocalTime.of(5, 50),
         val sunset: LocalTime? = LocalTime.of(20, 0),
@@ -75,6 +77,7 @@ object DemoData {
                 "Partly cloudy dawn", "Low sun and scattered clouds",
                 "Córdoba", "Argentina", -31.42, -64.18, today.plusDays(1), LocalTime.of(6, 10),
                 Condition.PartlyCloudy, 15.0, wind = 8.0, windDir = 20.0, sunrise = LocalTime.of(6, 0), tempTrend = 1.2,
+                cloudCover = 30.0,
             ),
             Spec(
                 "Overcast dusk", "Grey sky as the sun sets",
@@ -144,6 +147,7 @@ object DemoData {
                 "Crescent moon, some clouds", "Partly cloudy night with a thin moon",
                 "Mendoza", "Argentina", -32.89, -68.83, crescent, LocalTime.of(21, 30),
                 Condition.PartlyCloudy, 20.0, wind = 7.0, windDir = 180.0, sunrise = LocalTime.of(6, 5), sunset = LocalTime.of(20, 30),
+                cloudCover = 70.0,
             ),
             Spec(
                 "Gale-force wind", "Beaufort 8 with gusts near 100 km/h and an orange alert",
@@ -224,7 +228,12 @@ object DemoData {
             isDay = isDay(at),
             precipitation = s.precip,
             condition = s.condition,
-            cloudCover = 50.0,
+            cloudCover = s.cloudCover ?: when (s.condition) {
+                Condition.Clear -> 5.0
+                Condition.MostlyClear -> 15.0
+                Condition.PartlyCloudy -> 45.0
+                else -> 95.0
+            },
             pressure = s.pressure,
             wind = Wind(s.wind, s.windDir, s.gust),
             visibility = s.visibility,

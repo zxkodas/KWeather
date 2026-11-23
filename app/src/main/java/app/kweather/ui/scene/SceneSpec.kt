@@ -28,6 +28,10 @@ data class SceneSpec(
     val southern: Boolean = false,
     /** km/h; how far gusts exceed the mean wind sets how hard the grass sways. */
     val windGusts: Double = 0.0,
+    /** Percent of the sky covered; sets how many clouds a partly cloudy sky has. */
+    val cloudCover: Double = 50.0,
+    /** Metres, or null when unknown; low visibility thickens the haze on the horizon. */
+    val visibility: Double? = null,
 ) {
     companion object {
         fun from(weather: Weather): SceneSpec {
@@ -52,6 +56,8 @@ data class SceneSpec(
                 heavy = c.condition in setOf(Condition.HeavyRain, Condition.HeavySnow, Condition.Hail),
                 southern = weather.place.latitude < 0,
                 windGusts = c.wind.gusts,
+                cloudCover = c.cloudCover,
+                visibility = c.visibility,
             )
         }
 
