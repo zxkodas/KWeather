@@ -1,14 +1,28 @@
 package app.kweather.domain
 
+import kotlinx.serialization.Serializable
+
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+@Serializable
 data class Place(
+    /** Stable id: the geocoding id for searched places, [CURRENT_ID] for GPS. */
+    val id: String,
     val name: String,
+    /** "Buenos Aires, Argentina"-style subtitle. */
     val region: String,
     val latitude: Double,
     val longitude: Double,
-)
+    /** ISO 3166-1 alpha-2, used later to pick the alert source. */
+    val countryCode: String? = null,
+) {
+    val isCurrent: Boolean get() = id == CURRENT_ID
+
+    companion object {
+        const val CURRENT_ID = "current"
+    }
+}
 
 data class Weather(
     val place: Place,

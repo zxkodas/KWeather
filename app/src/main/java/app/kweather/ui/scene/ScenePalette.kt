@@ -26,6 +26,11 @@ data class ScenePalette(
     val isDark: Boolean,
 ) {
     companion object {
+        /** Clear-day palette for screens that have no forecast to take colors from. */
+        val default: ScenePalette by lazy {
+            forSpec(SceneSpec(SkyType.Clear, TimeOfDay.Day, 0.0, 0.0, 0.0, 0.0, heavy = false))
+        }
+
         fun forSpec(spec: SceneSpec): ScenePalette {
             val clear = clearSky(spec.time)
             val (top, bottom) = when (spec.sky) {

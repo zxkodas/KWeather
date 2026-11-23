@@ -146,7 +146,18 @@ private fun DrawScope.drawSun(spec: SceneSpec, u: Float, t: Float) {
 private fun DrawScope.drawMoon(phase: Double, southern: Boolean, p: ScenePalette, u: Float) {
     val center = Offset(300f * u, 130f * u)
     val r = 36f * u
-    drawCircle(Color(0xFFC9D3FF), radius = r * 2f, center = center, alpha = 0.18f)
+    val glow = r * 2.6f
+    drawCircle(
+        Brush.radialGradient(
+            0f to Color(0xFFC9D3FF).copy(alpha = 0.32f),
+            0.4f to Color(0xFFC9D3FF).copy(alpha = 0.14f),
+            1f to Color(0xFFC9D3FF).copy(alpha = 0f),
+            center = center,
+            radius = glow,
+        ),
+        radius = glow,
+        center = center,
+    )
     val disc = Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, r)) }
     clipPath(disc) {
         drawCircle(Color(0xFFF4F1DE), radius = r, center = center)

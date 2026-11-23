@@ -56,6 +56,12 @@ class WeatherRepository(
         weather
     }
 
+    /** Deletes cached forecasts for places that are no longer in the list. */
+    suspend fun prune(keep: List<Place>) = withContext(Dispatchers.IO) {
+        val keepNames = keep.map { cacheFile(it).name }.toSet()
+        cacheDir.listFiles { f -> f.name.startsWith("forecast_") && f.name !in keepNames }?.forEach { it.delete() }
+    }
+
     private fun decode(place: Place, entry: CacheEntry): Weather {
         val forecast = json.decodeFromString<ForecastResponse>(entry.forecast)
         val air = entry.air?.let { runCatching { json.decodeFromString<AirQualityResponse>(it) }.getOrNull() }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,31 +13,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.view.WindowCompat
+import app.kweather.R
 import app.kweather.domain.Weather
 import app.kweather.domain.labelFor
 import app.kweather.ui.deg
@@ -47,40 +61,48 @@ import app.kweather.ui.home.cards.DetailsGrid
 import app.kweather.ui.home.cards.HourlyCard
 import app.kweather.ui.home.cards.SunMoonCard
 import app.kweather.ui.home.cards.WindCard
+import app.kweather.ui.scene.LocalPalette
 import app.kweather.ui.scene.SceneSpec
 import app.kweather.ui.scene.ScenePalette
-import app.kweather.ui.scene.SkyType
-import app.kweather.ui.scene.TimeOfDay
 import app.kweather.ui.scene.WeatherScene
 import app.kweather.ui.theme.KWeatherTheme
 
+/** Actions a page can trigger, so the page itself stays free of navigation and permissions. */
+class PageActions(
+    val onRefresh: (PageState) -> Unit,
+    val onOpenPlaces: () -> Unit,
+    val onRequestLocation: () -> Unit,
+    val onOpenAppSettings: () -> Unit,
+    val onOpenLocationSettings: () -> Unit,
+)
+
 @Composable
-fun HomeRoute(vm: HomeViewModel = viewModel(factory = HomeViewModel.Factory)) {
-    val state by vm.state.collectAsStateWithLifecycle()
-    val weather = state.weather
+fun WeatherPage(page: PageState, index: Int, count: Int, actions: PageActions) {
+    val weather = page.weather
     if (weather == null) {
-        LoadingScreen(error = state.error, onRetry = vm::refresh)
+        PageMessage(page, index, count, actions)
         return
     }
     val spec = remember(weather) { SceneSpec.from(weather) }
     val palette = remember(spec) { ScenePalette.forSpec(spec) }
     KWeatherTheme(palette) {
-        HomeScreen(weather, spec, palette, state.refreshing, state.error, onRefresh = vm::refresh)
+        WeatherContent(page, weather, spec, palette, index, count, actions)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeScreen(
+private fun WeatherContent(
+    page: PageState,
     weather: Weather,
     spec: SceneSpec,
     palette: ScenePalette,
-    refreshing: Boolean,
-    error: String?,
-    onRefresh: () -> Unit,
+    index: Int,
+    count: Int,
+    actions: PageActions,
 ) {
     val scroll = rememberScrollState()
-    val density = androidx.compose.ui.platform.LocalDensity.current
+    val density = LocalDensity.current
     val statusBarPx = WindowInsets.statusBars.getTop(density).toFloat()
     val heroPx = with(density) { HERO_HEIGHT.toPx() }
     // 0 while the status bar is over the sky, 1 once cards scroll under it.
@@ -89,30 +111,27 @@ private fun HomeScreen(
             ((scroll.value - (heroPx - 2 * statusBarPx)) / statusBarPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
         }
     }
-    val activity = androidx.activity.compose.LocalActivity.current
-    val view = androidx.compose.ui.platform.LocalView.current
-    val darkIcons = !palette.isDark && scrim > 0.5f
-    androidx.compose.runtime.SideEffect {
-        activity?.window?.let { window ->
-            androidx.core.view.WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkIcons
-        }
-    }
+    StatusBarIcons(dark = !palette.isDark && scrim > 0.5f)
 
     PullToRefreshBox(
-        isRefreshing = refreshing,
-        onRefresh = onRefresh,
+        isRefreshing = page.refreshing,
+        onRefresh = { actions.onRefresh(page) },
         modifier = Modifier.fillMaxSize().background(palette.background),
     ) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             Box(Modifier.fillMaxWidth().height(HERO_HEIGHT)) {
                 WeatherScene(spec, palette, Modifier.fillMaxSize())
-                Hero(weather, Modifier.statusBarsPadding().padding(start = 24.dp, top = 56.dp))
+                Column(Modifier.statusBarsPadding()) {
+                    PageHeader(index, count, actions.onOpenPlaces)
+                    Hero(page, weather, Modifier.padding(start = 24.dp, top = 8.dp))
+                }
             }
             Column(
                 Modifier.padding(horizontal = 16.dp).offset(y = (-8).dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (error != null) ErrorBanner(error)
+                page.locationIssue?.let { Banner("${it.message} Showing your last known location.") }
+                page.error?.let { Banner(it) }
                 HourlyCard(weather)
                 WindCard(weather)
                 DetailsGrid(weather)
@@ -137,19 +156,62 @@ private fun HomeScreen(
     }
 }
 
+@Composable
+fun StatusBarIcons(dark: Boolean) {
+    val activity = androidx.activity.compose.LocalActivity.current
+    val view = LocalView.current
+    SideEffect {
+        activity?.window?.let { WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = dark }
+    }
+}
+
+/** Places button on the left, one dot per page in the middle. */
+@Composable
+private fun PageHeader(index: Int, count: Int, onOpenPlaces: () -> Unit) {
+    Box(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 12.dp)) {
+        IconButton(
+            onClick = onOpenPlaces,
+            modifier = Modifier.align(Alignment.CenterStart),
+            colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0x33000000), contentColor = Color.White),
+        ) {
+            Icon(painterResource(R.drawable.ic_places), contentDescription = "Places")
+        }
+        if (count > 1) {
+            Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(count) { i ->
+                    Box(
+                        Modifier
+                            .height(6.dp)
+                            .width(if (i == index) 18.dp else 6.dp)
+                            .background(if (i == index) Color.White else Color(0x80FFFFFF), CircleShape),
+                    )
+                }
+            }
+        }
+    }
+}
+
 private val HERO_HEIGHT = 480.dp
 
 private val heroShadow = Shadow(color = Color(0x40000000), blurRadius = 12f)
 
 @Composable
-private fun Hero(weather: Weather, modifier: Modifier = Modifier) {
+private fun Hero(page: PageState, weather: Weather, modifier: Modifier = Modifier) {
     val c = weather.current
     val today = weather.today
+    val name = page.place?.name ?: weather.place.name
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            weather.place.name,
-            style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Color.White, shadow = heroShadow),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (page.isCurrent) {
+                Icon(
+                    painterResource(R.drawable.ic_location),
+                    contentDescription = "Current location",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Text(name, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Color.White, shadow = heroShadow))
+        }
         Text(
             c.temperature.deg(),
             style = TextStyle(fontSize = 104.sp, fontWeight = FontWeight.Light, color = Color.White,
@@ -169,37 +231,64 @@ private fun Hero(weather: Weather, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ErrorBanner(message: String) {
-    val p = app.kweather.ui.scene.LocalPalette.current
+private fun Banner(message: String) {
+    val p = LocalPalette.current
     Text(
         message,
         style = TextStyle(fontSize = 14.sp, color = p.onCard),
         modifier = Modifier
             .fillMaxWidth()
-            .background(p.card, androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+            .background(p.card, RoundedCornerShape(20.dp))
             .padding(horizontal = 16.dp, vertical = 12.dp),
     )
 }
 
+/** Loading, error and location-problem states for a page that has no forecast yet. */
 @Composable
-private fun LoadingScreen(error: String?, onRetry: () -> Unit) {
-    val palette = remember {
-        ScenePalette.forSpec(SceneSpec(SkyType.Clear, TimeOfDay.Day, 0.0, 0.0, 0.0, 0.0, false))
-    }
-    Box(Modifier.fillMaxSize().background(palette.skyTop), contentAlignment = Alignment.Center) {
-        if (error == null) {
-            CircularProgressIndicator(color = Color.White)
-        } else {
-            Column(
-                Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(error, style = TextStyle(fontSize = 16.sp, color = Color.White))
-                androidx.compose.material3.OutlinedButton(onClick = onRetry) {
-                    Text("Try again", color = Color.White)
+private fun PageMessage(page: PageState, index: Int, count: Int, actions: PageActions) {
+    val palette = ScenePalette.default
+    StatusBarIcons(dark = false)
+    Box(Modifier.fillMaxSize().background(palette.skyTop)) {
+        Column(Modifier.statusBarsPadding()) { PageHeader(index, count, actions.onOpenPlaces) }
+        Column(
+            Modifier.align(Alignment.Center).padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            val issue = page.locationIssue
+            val title = page.place?.name ?: if (page.isCurrent) "Current location" else ""
+            Text(title, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Color.White))
+            when {
+                page.isCurrent && page.place == null && issue != null -> {
+                    Message(issue.message)
+                    when (issue) {
+                        LocationIssue.NoPermission -> {
+                            WhiteButton("Allow location", actions.onRequestLocation)
+                            WhiteButton("Open app settings", actions.onOpenAppSettings)
+                        }
+                        LocationIssue.LocationOff -> WhiteButton("Open location settings", actions.onOpenLocationSettings)
+                        LocationIssue.Unavailable -> WhiteButton("Try again") { actions.onRefresh(page) }
+                    }
+                }
+                page.refreshing || (page.error == null && issue == null) -> {
+                    CircularProgressIndicator(color = Color.White)
+                    Message(if (page.isCurrent && page.place == null) "Finding your location…" else "Loading the forecast…")
+                }
+                else -> {
+                    Message(page.error ?: issue?.message ?: "Something went wrong.")
+                    WhiteButton("Try again") { actions.onRefresh(page) }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun Message(text: String) {
+    Text(text, style = TextStyle(fontSize = 16.sp, color = Color.White, textAlign = TextAlign.Center))
+}
+
+@Composable
+private fun WhiteButton(label: String, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick) { Text(label, color = Color.White) }
 }

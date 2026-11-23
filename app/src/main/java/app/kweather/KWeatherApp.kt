@@ -2,6 +2,8 @@ package app.kweather
 
 import android.app.Application
 import app.kweather.data.WeatherRepository
+import app.kweather.data.location.LocationProvider
+import app.kweather.data.places.PlacesRepository
 import app.kweather.data.openmeteo.OpenMeteoApi
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -32,7 +34,11 @@ class KWeatherApp : Application() {
         }
     }
 
-    val weatherRepository by lazy {
-        WeatherRepository(OpenMeteoApi(http), filesDir, json)
-    }
+    private val openMeteo by lazy { OpenMeteoApi(http) }
+
+    val weatherRepository by lazy { WeatherRepository(openMeteo, filesDir, json) }
+
+    val placesRepository by lazy { PlacesRepository(this, openMeteo, json) }
+
+    val locationProvider by lazy { LocationProvider(this) }
 }

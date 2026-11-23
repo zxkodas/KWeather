@@ -28,6 +28,14 @@ class OpenMeteoApi(private val http: HttpClient) {
             parameter("current", "us_aqi,pm2_5,pm10")
         }.bodyAsText()
 
+    suspend fun searchJson(query: String): String =
+        http.get("https://geocoding-api.open-meteo.com/v1/search") {
+            parameter("name", query)
+            parameter("count", 10)
+            parameter("language", "en")
+            parameter("format", "json")
+        }.bodyAsText()
+
     private companion object {
         const val CURRENT = "temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m," +
             "is_day,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m," +
