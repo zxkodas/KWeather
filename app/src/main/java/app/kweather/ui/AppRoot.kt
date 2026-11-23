@@ -1,5 +1,14 @@
 package app.kweather.ui
 
+import app.kweather.ui.settings.SettingsViewModel
+import app.kweather.ui.settings.SettingsScreen
+import app.kweather.ui.settings.LocalFmt
+import app.kweather.ui.settings.Fmt
+import app.kweather.ui.demo.DemoPager
+import app.kweather.ui.demo.DemoGalleryScreen
+import app.kweather.ui.demo.DemoData
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -38,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.kweather.KWeatherApp
+import app.kweather.ui.alerts.AlertScreen
 import app.kweather.ui.home.HomeUiState
 import app.kweather.ui.home.HomeViewModel
 import app.kweather.ui.home.PageActions
@@ -54,13 +64,24 @@ import app.kweather.ui.theme.KWeatherTheme
 fun AppRoot(
     home: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
     places: PlacesViewModel = viewModel(factory = PlacesViewModel.Factory),
+    settingsVm: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val state by home.state.collectAsStateWithLifecycle()
+    val settings by settingsVm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val app = context.applicationContext as KWeatherApp
-    var showPlaces by rememberSaveable { mutableStateOf(false) }
+    // Simple back stack of screen names, saved as one string so it survives rotation.
+    var stackText by rememberSaveable { mutableStateOf(HOME) }
+    val stack = stackText.split('/')
+    val screen = stack.last()
+    fun push(name: String) { stackText = "$stackText/$name" }
+    fun pop() { stackText = stack.dropLast(1).joinToString("/").ifEmpty { HOME } }
     var pendingPage by rememberSaveable { mutableStateOf<String?>(null) }
+    var demoStart by rememberSaveable { mutableStateOf(0) }
+    // Open alert as "pageKey|alertId".
+    var openAlert by rememberSaveable { mutableStateOf<String?>(null) }
     val pager = rememberPagerState { state.pages.size }
+    val demoCities = remember { DemoData.cities() }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         home.onLocationPermissionResult(granted)
@@ -71,7 +92,7 @@ fun AppRoot(
     }
     val pageActions = PageActions(
         onRefresh = home::refresh,
-        onOpenPlaces = { showPlaces = true },
+        onOpenPlaces = { push(PLACES) },
         onRequestLocation = requestLocation,
         onOpenAppSettings = {
             context.startActivity(
@@ -79,12 +100,26 @@ fun AppRoot(
             )
         },
         onOpenLocationSettings = { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
+        onOpenAlert = { pageKey, alertId -> openAlert = "$pageKey|$alertId" },
+        onOpenSettings = { push(SETTINGS) },
     )
+    val demoActions = PageActions(
+        onRefresh = {},
+        onOpenPlaces = { pop() },
+        onRequestLocation = {},
+        onOpenAppSettings = {},
+        onOpenLocationSettings = {},
+        onOpenAlert = { pageKey, alertId -> openAlert = "$pageKey|$alertId" },
+        onOpenSettings = { push(SETTINGS) },
+    )
+    val allPages = state.pages + demoCities.map { it.page }
+    val alertPage = openAlert?.substringBefore('|')?.let { key -> allPages.firstOrNull { it.key == key } }
+    val alert = alertPage?.alerts?.firstOrNull { it.id == openAlert?.substringAfter('|') }
 
     // Jump to a page chosen in the Places screen once it exists in the pager.
-    LaunchedEffect(pendingPage, state.pages, showPlaces) {
+    LaunchedEffect(pendingPage, state.pages, screen) {
         val key = pendingPage ?: return@LaunchedEffect
-        if (showPlaces) return@LaunchedEffect
+        if (screen != HOME) return@LaunchedEffect
         val index = state.pages.indexOfFirst { it.key == key }
         if (index >= 0) {
             pager.scrollToPage(index)
@@ -92,52 +127,86 @@ fun AppRoot(
         }
     }
 
-    if (!state.ready) {
+    val current = settings
+    if (!state.ready || current == null) {
         Box(Modifier.fillMaxSize().background(ScenePalette.default.skyTop))
         return
     }
 
-    when {
-        showPlaces -> {
-            BackHandler { showPlaces = false }
-            KWeatherTheme(placesPalette(state, pager.currentPage)) {
-                PlacesScreen(
-                    home = state,
-                    vm = places,
-                    actions = PlacesActions(
-                        onBack = { showPlaces = false },
-                        onOpenPage = { key ->
-                            pendingPage = key
-                            places.clear()
-                            showPlaces = false
-                        },
-                        onAdd = { place ->
-                            home.addPlace(place)
-                            pendingPage = place.id
-                            places.clear()
-                            showPlaces = false
-                        },
-                        onRemove = home::removePlace,
-                        onMove = home::movePlace,
-                        onToggleCurrent = { enabled -> if (enabled) requestLocation() else home.setUseCurrentLocation(false) },
-                    ),
-                )
+    CompositionLocalProvider(LocalFmt provides Fmt(current)) {
+        when {
+            alert != null -> {
+                BackHandler { openAlert = null }
+                AlertScreen(alert, alertPage.place?.name.orEmpty()) { openAlert = null }
             }
-        }
-        state.pages.isEmpty() -> Welcome(
-            state = state,
-            onUseLocation = requestLocation,
-            onSearch = { showPlaces = true },
-        )
-        else -> HorizontalPager(
-            state = pager,
-            key = { state.pages[it].key },
-            modifier = Modifier.fillMaxSize(),
-        ) { index ->
-            WeatherPage(state.pages[index], index, state.pages.size, pageActions)
+            screen == PLACES -> {
+                BackHandler { pop() }
+                KWeatherTheme(placesPalette(state, pager.currentPage)) {
+                    PlacesScreen(
+                        home = state,
+                        vm = places,
+                        actions = PlacesActions(
+                            onBack = { pop() },
+                            onOpenPage = { key ->
+                                pendingPage = key
+                                places.clear()
+                                pop()
+                            },
+                            onAdd = { place ->
+                                home.addPlace(place)
+                                pendingPage = place.id
+                                places.clear()
+                                pop()
+                            },
+                            onRemove = home::removePlace,
+                            onMove = home::movePlace,
+                            onToggleCurrent = { enabled -> if (enabled) requestLocation() else home.setUseCurrentLocation(false) },
+                        ),
+                    )
+                }
+            }
+            screen == SETTINGS -> {
+                BackHandler { pop() }
+                KWeatherTheme(placesPalette(state, pager.currentPage)) {
+                    SettingsScreen(
+                        settings = current,
+                        onChange = settingsVm::update,
+                        onOpenDemo = { push(DEMO_LIST) },
+                        onBack = { pop() },
+                    )
+                }
+            }
+            screen == DEMO_LIST -> {
+                BackHandler { pop() }
+                KWeatherTheme(placesPalette(state, pager.currentPage)) {
+                    DemoGalleryScreen(demoCities, onOpen = { demoStart = it; push(DEMO) }, onBack = { pop() })
+                }
+            }
+            screen == DEMO -> {
+                BackHandler { pop() }
+                DemoPager(demoCities, demoStart, demoActions)
+            }
+            state.pages.isEmpty() -> Welcome(
+                state = state,
+                onUseLocation = requestLocation,
+                onSearch = { push(PLACES) },
+            )
+            else -> HorizontalPager(
+                state = pager,
+                key = { state.pages[it].key },
+                modifier = Modifier.fillMaxSize(),
+            ) { index ->
+                WeatherPage(state.pages[index], index, state.pages.size, pageActions)
+            }
         }
     }
 }
+
+private const val HOME = "home"
+private const val PLACES = "places"
+private const val SETTINGS = "settings"
+private const val DEMO_LIST = "demoList"
+private const val DEMO = "demo"
 
 /** The Places screen borrows the colors of the page you came from. */
 private fun placesPalette(state: HomeUiState, page: Int): ScenePalette =

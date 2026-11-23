@@ -1,20 +1,12 @@
 package app.kweather.ui
 
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val hourMinute = DateTimeFormatter.ofPattern("HH:mm")
-
-fun Double.deg(): String = "${roundToInt()}°"
+// Units and clock formats live in ui.settings.Fmt; these helpers are unit-free.
 
 fun Double.whole(): String = roundToInt().toString()
-
-fun LocalDateTime.hhmm(): String = format(hourMinute)
-
-fun LocalDateTime.hourLabel(): String = "%02d".format(hour)
 
 fun java.time.LocalDate.shortDay(): String =
     dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH)

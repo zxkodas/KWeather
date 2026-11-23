@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.kweather.domain.Weather
 import app.kweather.domain.WindMath
-import app.kweather.ui.hourLabel
 import app.kweather.ui.scene.LocalPalette
 import app.kweather.ui.whole
 import kotlin.math.cos
@@ -43,6 +43,7 @@ fun WindCard(weather: Weather) {
     val force = WindMath.beaufort(wind.speed)
     val point = WindMath.compassPoint(wind.direction)
     val upper = weather.hours.firstOrNull()
+    val f = LocalFmt.current
 
     SceneCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -62,12 +63,12 @@ fun WindCard(weather: Weather) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Compass(wind.direction, Modifier.size(124.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row { Stat("Speed", wind.speed.whole(), "km/h", Modifier.weight(1f)); Stat("Gusts", wind.gusts.whole(), "km/h", Modifier.weight(1f), p.gust) }
+                Row { Stat("Speed", f.windValue(wind.speed), f.windUnit, Modifier.weight(1f)); Stat("Gusts", f.windValue(wind.gusts), f.windUnit, Modifier.weight(1f), p.gust) }
                 Row {
                     Stat("From", point, "${wind.direction.whole()}°", Modifier.weight(1f))
                     val high = upper?.windSpeed120m ?: upper?.windSpeed80m
                     val label = if (upper?.windSpeed120m != null) "At 120 m" else "At 80 m"
-                    Stat(label, high?.whole() ?: "–", "km/h", Modifier.weight(1f))
+                    Stat(label, high?.let(f::windValue) ?: "–", f.windUnit, Modifier.weight(1f))
                 }
             }
         }
@@ -126,11 +127,12 @@ private fun GustBars(weather: Weather) {
     val hours = weather.hours.take(12)
     if (hours.isEmpty()) return
     val peak = hours.maxBy { it.wind.gusts }
+    val f = LocalFmt.current
     val measurer = rememberTextMeasurer()
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row {
             Text("Next 12 h · speed and gusts", style = TextStyle(fontSize = 12.sp, color = p.onCardVariant), modifier = Modifier.weight(1f))
-            Text("Peak ${peak.wind.gusts.whole()} at ${peak.time.hourLabel()}:00", style = TextStyle(fontSize = 12.sp, color = p.onCardVariant))
+            Text("Peak ${f.wind(peak.wind.gusts)} at ${f.hourPhrase(peak.time)}", style = TextStyle(fontSize = 12.sp, color = p.onCardVariant))
         }
         Canvas(Modifier.fillMaxWidth().height(78.dp)) {
             val maxV = hours.maxOf { it.wind.gusts }.coerceAtLeast(10.0)
@@ -146,7 +148,7 @@ private fun GustBars(weather: Weather) {
                 val gy = (chartH - h.wind.gusts / maxV * chartH).toFloat()
                 drawLine(p.gust, Offset(x, gy), Offset(x + barW, gy), strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
                 if (i % 3 == 0) {
-                    val t = measurer.measure(h.time.hourLabel(), style)
+                    val t = measurer.measure(f.hour(h.time), style)
                     drawText(t, topLeft = Offset(x + barW / 2 - t.size.width / 2, size.height - t.size.height))
                 }
             }

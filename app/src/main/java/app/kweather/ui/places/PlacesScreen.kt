@@ -1,5 +1,6 @@
 package app.kweather.ui.places
 
+import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.kweather.R
 import app.kweather.domain.Place
-import app.kweather.ui.deg
 import app.kweather.ui.home.HomeUiState
 import app.kweather.ui.home.StatusBarIcons
 import app.kweather.ui.scene.LocalPalette
@@ -153,7 +153,7 @@ fun PlacesScreen(home: HomeUiState, vm: PlacesViewModel, actions: PlacesActions)
                 }
                 items(home.saved, key = { it.id }) { place ->
                     val index = home.saved.indexOf(place)
-                    val temp = home.pages.firstOrNull { it.key == place.id }?.weather?.current?.temperature?.deg()
+                    val temp = home.pages.firstOrNull { it.key == place.id }?.weather?.current?.temperature?.let(LocalFmt.current::temp)
                     PlaceRow(
                         title = place.name,
                         subtitle = place.region,
@@ -194,7 +194,7 @@ private fun CurrentLocationRow(home: HomeUiState, actions: PlacesActions) {
     PlaceRow(
         title = "Use my location",
         subtitle = subtitle,
-        trailing = current?.weather?.current?.temperature?.deg()?.takeIf { home.useCurrentLocation },
+        trailing = current?.weather?.current?.temperature?.let(LocalFmt.current::temp)?.takeIf { home.useCurrentLocation },
         onClick = if (home.useCurrentLocation && current != null) {
             { actions.onOpenPage(current.key) }
         } else {

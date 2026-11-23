@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.kweather.domain.ComfortMath
 import app.kweather.domain.Weather
-import app.kweather.ui.deg
 import app.kweather.ui.scene.LocalPalette
 import app.kweather.ui.whole
 import java.util.Locale
@@ -21,6 +21,7 @@ import java.util.Locale
 @Composable
 fun DetailsGrid(weather: Weather) {
     val c = weather.current
+    val f = LocalFmt.current
     val pressureTrend = weather.hours.getOrNull(3)?.pressure?.let { later ->
         when {
             later - c.pressure > 1.0 -> "rising"
@@ -30,20 +31,19 @@ fun DetailsGrid(weather: Weather) {
     } ?: "steady"
     val uv = c.uvIndex ?: 0.0
     val aqi = weather.airQuality?.usAqi
-    val visibilityKm = c.visibility?.let { it / 1000 }
     val rainNext24 = weather.hours.take(24).sumOf { it.precipitation }
 
     val tiles = listOf(
-        Tile("Humidity", "${c.humidity.whole()}%", c.dewPoint?.let { "Dew point ${it.deg()}" } ?: ""),
-        Tile("Pressure", c.pressure.whole(), "hPa · $pressureTrend"),
+        Tile("Humidity", "${c.humidity.whole()}%", c.dewPoint?.let { "Dew point ${f.temp(it)}" } ?: ""),
+        Tile("Pressure", f.pressureValue(c.pressure), "${f.pressureUnit} · $pressureTrend"),
         Tile("UV index", uv.whole(), ComfortMath.uvLabel(uv)),
         Tile("Air quality", aqi?.toString() ?: "–", aqi?.let { ComfortMath.aqiLabel(it) } ?: "Unavailable"),
         Tile(
             "Visibility",
-            visibilityKm?.let { if (it >= 10) "${it.whole()} km" else String.format(Locale.getDefault(), "%.1f km", it) } ?: "–",
-            visibilityKm?.let { if (it >= 10) "Clear" else if (it >= 4) "Hazy" else "Poor" } ?: "",
+            c.visibility?.let(f::distance) ?: "–",
+            c.visibility?.let { if (it >= 10_000) "Clear" else if (it >= 4_000) "Hazy" else "Poor" } ?: "",
         ),
-        Tile("Rain next 24 h", String.format(Locale.getDefault(), "%.1f mm", rainNext24), String.format(Locale.getDefault(), "%.1f mm right now", c.precipitation)),
+        Tile("Rain next 24 h", f.precip(rainNext24), "${f.precip(c.precipitation)} right now"),
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

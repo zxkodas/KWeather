@@ -1,5 +1,6 @@
 package app.kweather.ui.home
 
+import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,8 +54,7 @@ import androidx.core.view.WindowCompat
 import app.kweather.R
 import app.kweather.domain.Weather
 import app.kweather.domain.labelFor
-import app.kweather.ui.deg
-import app.kweather.ui.hhmm
+import app.kweather.ui.alerts.AlertBanner
 import app.kweather.ui.home.cards.ComfortCard
 import app.kweather.ui.home.cards.DailyCard
 import app.kweather.ui.home.cards.DetailsGrid
@@ -74,6 +74,8 @@ class PageActions(
     val onRequestLocation: () -> Unit,
     val onOpenAppSettings: () -> Unit,
     val onOpenLocationSettings: () -> Unit,
+    val onOpenAlert: (pageKey: String, alertId: String) -> Unit,
+    val onOpenSettings: () -> Unit,
 )
 
 @Composable
@@ -122,7 +124,7 @@ private fun WeatherContent(
             Box(Modifier.fillMaxWidth().height(HERO_HEIGHT)) {
                 WeatherScene(spec, palette, Modifier.fillMaxSize())
                 Column(Modifier.statusBarsPadding()) {
-                    PageHeader(index, count, actions.onOpenPlaces)
+                    PageHeader(index, count, actions.onOpenPlaces, actions.onOpenSettings)
                     Hero(page, weather, Modifier.padding(start = 24.dp, top = 8.dp))
                 }
             }
@@ -130,6 +132,10 @@ private fun WeatherContent(
                 Modifier.padding(horizontal = 16.dp).offset(y = (-8).dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                page.alerts.take(3).forEach { alert ->
+                    AlertBanner(alert) { actions.onOpenAlert(page.key, alert.id) }
+                }
+                if (page.alerts.size > 3) Banner("${page.alerts.size - 3} more alerts for this place.")
                 page.locationIssue?.let { Banner("${it.message} Showing your last known location.") }
                 page.error?.let { Banner(it) }
                 HourlyCard(weather)
@@ -139,7 +145,7 @@ private fun WeatherContent(
                 SunMoonCard(weather)
                 DailyCard(weather)
                 Text(
-                    "Updated ${weather.fetchedAt.hhmm()} · Forecast data: Open-Meteo.com",
+                    if (page.key.startsWith("demo:")) "Demo data, not a real forecast" else "Updated ${LocalFmt.current.time(weather.fetchedAt)} · Forecast data: Open-Meteo.com",
                     style = TextStyle(fontSize = 12.sp, color = palette.onCardVariant),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 )
@@ -165,9 +171,9 @@ fun StatusBarIcons(dark: Boolean) {
     }
 }
 
-/** Places button on the left, one dot per page in the middle. */
+/** Places button on the left, one dot per page in the middle, settings on the right. */
 @Composable
-private fun PageHeader(index: Int, count: Int, onOpenPlaces: () -> Unit) {
+private fun PageHeader(index: Int, count: Int, onOpenPlaces: () -> Unit, onOpenSettings: () -> Unit) {
     Box(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 12.dp)) {
         IconButton(
             onClick = onOpenPlaces,
@@ -175,6 +181,13 @@ private fun PageHeader(index: Int, count: Int, onOpenPlaces: () -> Unit) {
             colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0x33000000), contentColor = Color.White),
         ) {
             Icon(painterResource(R.drawable.ic_places), contentDescription = "Places")
+        }
+        IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier.align(Alignment.CenterEnd),
+            colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0x33000000), contentColor = Color.White),
+        ) {
+            Icon(painterResource(R.drawable.ic_settings), contentDescription = "Settings")
         }
         if (count > 1) {
             Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -199,6 +212,7 @@ private val heroShadow = Shadow(color = Color(0x40000000), blurRadius = 12f)
 private fun Hero(page: PageState, weather: Weather, modifier: Modifier = Modifier) {
     val c = weather.current
     val today = weather.today
+    val f = LocalFmt.current
     val name = page.place?.name ?: weather.place.name
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -213,17 +227,17 @@ private fun Hero(page: PageState, weather: Weather, modifier: Modifier = Modifie
             Text(name, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Color.White, shadow = heroShadow))
         }
         Text(
-            c.temperature.deg(),
+            f.temp(c.temperature),
             style = TextStyle(fontSize = 104.sp, fontWeight = FontWeight.Light, color = Color.White,
                 letterSpacing = (-4).sp, shadow = heroShadow),
         )
         Text(
-            "${c.condition.labelFor(c.isDay)} · feels ${c.feelsLike.deg()}",
+            "${c.condition.labelFor(c.isDay)} · feels ${f.temp(c.feelsLike)}",
             style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color.White, shadow = heroShadow),
         )
         if (today != null) {
             Text(
-                "H ${today.max.deg()}  L ${today.min.deg()}",
+                "H ${f.temp(today.max)}  L ${f.temp(today.min)}",
                 style = TextStyle(fontSize = 15.sp, color = Color(0xFFE6EEF7), shadow = heroShadow),
             )
         }
@@ -249,7 +263,7 @@ private fun PageMessage(page: PageState, index: Int, count: Int, actions: PageAc
     val palette = ScenePalette.default
     StatusBarIcons(dark = false)
     Box(Modifier.fillMaxSize().background(palette.skyTop)) {
-        Column(Modifier.statusBarsPadding()) { PageHeader(index, count, actions.onOpenPlaces) }
+        Column(Modifier.statusBarsPadding()) { PageHeader(index, count, actions.onOpenPlaces, actions.onOpenSettings) }
         Column(
             Modifier.align(Alignment.Center).padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

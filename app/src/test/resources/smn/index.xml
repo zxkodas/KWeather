@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="https://ssl.smn.gob.ar/CAP/estilo_ar.xsl"?>
+
+<rss xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+
+<channel>
+
+<title>Ultimos Avisos publicados por el Servicio Meteorologico Nacional (SMN) de Argentina</title>
+
+<link>https://ssl.smn.gob.ar/CAP/AR.php</link>
+
+<description>Ultimos Avisos publicados por el Servicio Meteorologico Nacional (SMN) de Argentina</description>
+
+<dc:publisher>Servicio Meteorologico Nacional (SMN) de Argentina</dc:publisher>
+
+<language>es</language>
+
+<copyright>Copyright 2025 SMN | Derechos de autor, Servicio Meteorologico Nacional (SMN). Licencia CC BY 4.0.</copyright>
+
+<atom:link href="https://ssl.smn.gob.ar/CAP/AR.php" rel="self" type="application/rss+xml"/>
+
+<pubDate>Mon, 23 Nov 2026 00:35:20 GMT</pubDate>
+
+<lastBuildDate>Mon, 23 Nov 2026 00:35:20 GMT</lastBuildDate>
+
+
+<item>
+
+
+<title>TORMENTAS FUERTES CON LLUVIAS INTENSAS Y OCASIONAL CAIDA DE GRANIZO</title>
+
+<link>https://ssl.smn.gob.ar/feeds/CAP/avisocortoplazo/2026_11_22_2258_cap_es.xml</link>
+
+
+<description>Afectando parcialmente los siguientes Partidos y Departamentos: SALTA: Gral Jose de S. Martin.</description>
+
+<guid>https://ssl.smn.gob.ar/feeds/CAP/avisocortoplazo/2026_11_22_2258_cap_es.xml</guid>
+
+<pubDate></pubDate>
+
+</item>
+<item>
+
+
+<title>Tormentas</title>
+
+<link>https://ssl.smn.gob.ar/feeds/CAP/xml_generados/CAP_20261122234628_Tormenta_Patagonia_alertas_alertas_33.xml</link>
+
+
+<description>El área será afectada por tormentas aisladas, algunas fuertes o localmente severas. Las mismas podrán estar acompañadas por abundantes precipitaciones en cortos períodos, frecuente actividad eléctrica, ocasional caída de granizo y ráfagas intensas. Se esperan valores de precipitación acumulada entre 30 y 70 mm, que pueden ser superados en forma puntual.</description>
+
+<guid>https://ssl.smn.gob.ar/feeds/CAP/xml_generados/CAP_20261122234628_Tormenta_Patagonia_alertas_alertas_33.xml</guid>
+
+<pubDate>Mon, 23 Nov 2026 00:00:02 GMT</pubDate>
+
+</item>
+<item>
+
+
+<title>Tormentas</title>
+
+<link>https://ssl.smn.gob.ar/feeds/CAP/xml_generados/CAP_20261122234628_Tormenta_Patagonia_alertas_alertas_34.xml</link>
+
+
+<description>El área será afectada por tormentas aisladas, algunas fuertes o localmente severas. Las mismas podrán estar acompañadas por abundantes precipitaciones en cortos períodos, frecuente actividad eléctrica, ocasional caída de granizo y ráfagas intensas. Se esperan valores de precipitación acumulada entre 30 y 70 mm, que pueden ser superados en forma puntual.</description>
+
+<guid>https://ssl.smn.gob.ar/feeds/CAP/xml_generados/CAP_20261122234628_Tormenta_Patagonia_alertas_alertas_34.xml</guid>
+
+<pubDate>Mon, 23 Nov 2026 00:00:02 GMT</pubDate>
+
+</item>
+</channel>
+</rss>

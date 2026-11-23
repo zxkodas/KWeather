@@ -32,9 +32,11 @@ import kotlin.math.sin
 @Composable
 fun WeatherScene(spec: SceneSpec, palette: ScenePalette, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val animate = remember {
+    val systemAllows = remember {
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
     }
+    // Both the app setting and Android's "remove animations" can turn motion off.
+    val animate = systemAllows && app.kweather.ui.settings.LocalFmt.current.settings.animations
     val time = remember { mutableFloatStateOf(0f) }
     if (animate) {
         LaunchedEffect(Unit) {

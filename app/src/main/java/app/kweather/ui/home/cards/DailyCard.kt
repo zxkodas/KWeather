@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -24,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.kweather.domain.Day
 import app.kweather.domain.Weather
-import app.kweather.ui.deg
 import app.kweather.ui.scene.LocalPalette
 import app.kweather.ui.shortDay
 import app.kweather.ui.whole
@@ -40,7 +40,7 @@ fun DailyCard(weather: Weather) {
     val highest = days.maxOf { it.max }
 
     SceneCard {
-        CardTitle("$DAYS-day forecast", "rain · max gust")
+        CardTitle("$DAYS-day forecast", "rain · max gust (${LocalFmt.current.windUnit})")
         days.forEachIndexed { i, day ->
             if (i > 0) HorizontalDivider(color = p.onCardVariant.copy(alpha = 0.15f))
             DayRow(day, if (i == 0) "Today" else day.date.shortDay(), lowest, highest)
@@ -51,6 +51,7 @@ fun DailyCard(weather: Weather) {
 @Composable
 private fun DayRow(day: Day, label: String, lowest: Double, highest: Double) {
     val p = LocalPalette.current
+    val f = LocalFmt.current
     Row(
         Modifier.fillMaxWidth().heightIn(min = 44.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -64,14 +65,14 @@ private fun DayRow(day: Day, label: String, lowest: Double, highest: Double) {
             modifier = Modifier.width(34.dp),
         )
         Text(
-            day.gustMax.whole(),
+            f.windValue(day.gustMax),
             style = TextStyle(fontSize = 12.sp, color = if (day.gustMax >= 50) p.gust else p.onCardVariant),
             modifier = Modifier.width(24.dp),
             textAlign = TextAlign.End,
         )
-        Text(day.min.deg(), style = TextStyle(fontSize = 14.sp, color = p.onCardVariant), modifier = Modifier.width(32.dp), textAlign = TextAlign.End)
+        Text(f.temp(day.min), style = TextStyle(fontSize = 14.sp, color = p.onCardVariant), modifier = Modifier.width(32.dp), textAlign = TextAlign.End)
         RangeBar(day, lowest, highest, Modifier.weight(1f).height(6.dp))
-        Text(day.max.deg(), style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = p.onCard), modifier = Modifier.width(32.dp))
+        Text(f.temp(day.max), style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = p.onCard), modifier = Modifier.width(32.dp))
     }
 }
 

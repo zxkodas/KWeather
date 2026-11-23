@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import app.kweather.domain.MoonMath
 import app.kweather.domain.Weather
 import app.kweather.ui.durationHm
-import app.kweather.ui.hhmm
 import app.kweather.ui.scene.LocalPalette
 import java.time.Duration
 import java.time.ZoneOffset
@@ -47,6 +47,7 @@ fun SunMoonCard(weather: Weather) {
         -1f
     }
     val phase = MoonMath.phase(now.toInstant(ZoneOffset.UTC))
+    val f = LocalFmt.current
 
     SceneCard {
         CardTitle(
@@ -84,8 +85,8 @@ fun SunMoonCard(weather: Weather) {
             }
         }
         Row(Modifier.fillMaxWidth()) {
-            Text("Sunrise ${sunrise?.hhmm() ?: "–"}", style = TextStyle(fontSize = 14.sp, color = p.onCard), modifier = Modifier.weight(1f))
-            Text("Sunset ${sunset?.hhmm() ?: "–"}", style = TextStyle(fontSize = 14.sp, color = p.onCard))
+            Text("Sunrise ${sunrise?.let(f::time) ?: "–"}", style = TextStyle(fontSize = 14.sp, color = p.onCard), modifier = Modifier.weight(1f))
+            Text("Sunset ${sunset?.let(f::time) ?: "–"}", style = TextStyle(fontSize = 14.sp, color = p.onCard))
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             MoonGlyph(phase, southern = weather.place.latitude < 0, Modifier.size(48.dp))

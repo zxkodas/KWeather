@@ -1,5 +1,6 @@
 package app.kweather.ui.home.cards
 
+import app.kweather.ui.settings.LocalFmt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -14,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.kweather.domain.ComfortMath
 import app.kweather.domain.Weather
-import app.kweather.ui.deg
 import app.kweather.ui.scene.LocalPalette
 
 /**
@@ -24,6 +24,7 @@ import app.kweather.ui.scene.LocalPalette
 @Composable
 fun ComfortCard(weather: Weather) {
     val c = weather.current
+    val f = LocalFmt.current
     val chill = ComfortMath.windChill(c.temperature, c.wind.speed)
     val heat = ComfortMath.heatIndex(c.temperature, c.humidity)
     when {
@@ -32,11 +33,11 @@ fun ComfortCard(weather: Weather) {
             Gauge(
                 title = "Wind chill",
                 trailing = if (minutes != null) "Frostbite risk: high" else "Dress for the wind",
-                value = chill.deg(),
+                value = f.temp(chill),
                 // -50 °C fills the bar.
                 fraction = ((10 - chill) / 60).toFloat(),
                 caption = if (minutes != null) "Exposed skin can freeze in under $minutes minutes."
-                else "The wind makes it feel ${(c.temperature - chill).toInt()}° colder than the air.",
+                else "The wind makes it feel ${f.tempDelta(c.temperature - chill)} colder than the air.",
             )
         }
         heat != null && heat >= c.temperature + 1 -> Gauge(
@@ -46,9 +47,9 @@ fun ComfortCard(weather: Weather) {
                 heat >= 32 -> "Extreme caution"
                 else -> "Caution"
             },
-            value = heat.deg(),
+            value = f.temp(heat),
             fraction = ((heat - 26) / 26).toFloat(),
-            caption = "Humidity makes it feel ${(heat - c.temperature).toInt()}° hotter. Drink water and limit time in the sun.",
+            caption = "Humidity makes it feel ${f.tempDelta(heat - c.temperature)} hotter. Drink water and limit time in the sun.",
         )
         else -> Unit
     }
